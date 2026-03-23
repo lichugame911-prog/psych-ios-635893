@@ -1,0 +1,53 @@
+name: Build Psych Engine iOS
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: macos-12
+    steps:
+      - name: Checkout Psych Engine 0.7.3
+        uses: actions/checkout@v4
+        with:
+          repository: ShadowMario/FNF-PsychEngine
+          ref: '0.7.3'
+
+      - name: Setup Haxe
+        run: brew install haxe
+
+      - name: Install libs
+        run: |
+          haxelib setup ~/haxelib
+          haxelib install hxcpp 4.3.2 --quiet
+          haxelib install lime 8.1.2 --quiet
+          haxelib install openfl 9.3.3 --quiet
+          haxelib install flixel 5.4.0 --quiet
+          haxelib install flixel-addons 3.2.2 --quiet
+          haxelib install flixel-ui 2.5.0 --quiet
+          haxelib install hscript 2.5.0 --quiet
+          haxelib install actuate 1.9.0 --quiet
+          haxelib install SScript 7.0.12 --quiet
+          haxelib install hxCodec 3.0.2 --quiet
+          haxelib run lime setup -y
+
+      - name: Patch iOS files
+        run: echo aW1wb3J0IG9zCgp3aXRoIG9wZW4oJ1Byb2plY3QueG1sJywncicpIGFzIGY6CiAgICB4bWwgPSBmLnJlYWQoKQoKYmxvY2sgPSAnJycKICAgIDxpb3MgZGVwbG95bWVudD0iMTQuMCI+CiAgICAgICAgPHBsaXN0PgogICAgICAgICAgICA8a2V5PlVJRmlsZVNoYXJpbmdFbmFibGVkPC9rZXk+PHRydWUvPgogICAgICAgICAgICA8a2V5PkxTU3VwcG9ydHNPcGVuaW5nRG9jdW1lbnRzSW5QbGFjZTwva2V5Pjx0cnVlLz4KICAgICAgICA8L3BsaXN0PgogICAgPC9pb3M+JycnCgppZiAnVUlGaWxlU2hhcmluZ0VuYWJsZWQnIG5vdCBpbiB4bWw6CiAgICB4bWwgPSB4bWwucmVwbGFjZSgnPC9wcm9qZWN0PicsIGJsb2NrICsgJ1xuPC9wcm9qZWN0PicpCiAgICB3aXRoIG9wZW4oJ1Byb2plY3QueG1sJywndycpIGFzIGY6CiAgICAgICAgZi53cml0ZSh4bWwpCiAgICBwcmludCgnUHJvamVjdC54bWwgcGF0Y2hlZCcpCgpmb3IgcCBpbiBbJ3NvdXJjZS9iYWNrZW5kL1BhdGhzLmh4Jywnc291cmNlL1BhdGhzLmh4J106CiAgICBpZiBub3Qgb3MucGF0aC5leGlzdHMocCk6CiAgICAgICAgY29udGludWUKICAgIHNyYyA9IG9wZW4ocCkucmVhZCgpCiAgICBvbGQgPSAiaW5saW5lIHN0YXRpYyBwdWJsaWMgZnVuY3Rpb24gbW9kcyg/a2V5OlN0cmluZyA9ICcnKTpTdHJpbmciCiAgICBudyA9ICgKICAgICAgICAiaW5saW5lIHN0YXRpYyBwdWJsaWMgZnVuY3Rpb24gbW9kcyg/a2V5OlN0cmluZyA9ICcnKTpTdHJpbmdcbiIKICAgICAgICAiICAgIHtcbiIKICAgICAgICAiICAgICAgICAjaWYgaW9zXG4iCiAgICAgICAgIiAgICAgICAgcmV0dXJuIGxpbWUuc3lzdGVtLlN5c3RlbS5kb2N1bWVudHNEaXJlY3RvcnkgKyAnL21vZHMvJyArIGtleTtcbiIKICAgICAgICAiICAgICAgICAjZWxzZVxuIgogICAgICAgICIgICAgICAgIHJldHVybiAnbW9kcy8nICsga2V5O1xuIgogICAgICAgICIgICAgICAgICNlbmRcbiIKICAgICAgICAiICAgIH1cbiIKICAgICAgICAiICAgIEA6ZGVwcmVjYXRlZCBpbmxpbmUgc3RhdGljIHB1YmxpYyBmdW5jdGlvbiBfb2xkKD9rZXk6U3RyaW5nID0gJycpOlN0cmluZyIKICAgICkKICAgIGlmICcjaWYgaW9zJyBub3QgaW4gc3JjIGFuZCBvbGQgaW4gc3JjOgogICAgICAgIHdpdGggb3BlbihwLCd3JykgYXMgZjoKICAgICAgICAgICAgZi53cml0ZShzcmMucmVwbGFjZShvbGQsIG53KSkKICAgICAgICBwcmludCgnUGF0aHMuaHggcGF0Y2hlZCcpCiAgICBicmVhawo= | base64 --decode | python3
+
+      - name: Build iOS
+        run: haxelib run lime build ios -release 2>&1
+
+      - name: Package IPA
+        run: |
+          DIR="export/release/ios/build/Release-iphoneos"
+          APP=$(ls "$DIR" | grep ".app$" | head -1)
+          mkdir -p Payload
+          cp -r "$DIR/$APP" Payload/
+          zip -r PsychEngine-iOS.ipa Payload/
+          echo "Done: $(du -sh PsychEngine-iOS.ipa | cut -f1)"
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: PsychEngine-iOS-unsigned
+          path: PsychEngine-iOS.ipa
+          retention-days: 30
